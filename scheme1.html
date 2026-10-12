@@ -197,7 +197,7 @@
     100% { transform: scale(1) rotate(0); }
   }
 
-  /* 特效：暴击/最大点数 全屏反馈 */
+  /* 特效：暴击/最大点数 全屏反馈（JS 驱动 opacity，避免移动端 CSS animation 被节流） */
   .fx-flash {
     position: fixed;
     top: 0;
@@ -208,13 +208,8 @@
     z-index: 100;
     background: radial-gradient(circle at 50% 40%, rgba(255, 245, 200, 1) 0%, rgba(255, 200, 90, 0.85) 30%, rgba(255, 130, 60, 0.35) 55%, rgba(255, 120, 60, 0) 75%);
     opacity: 0;
-  }
-  .fx-flash.run { animation: fxflash 1s ease-out; }
-  @keyframes fxflash {
-    0% { opacity: 0; }
-    12% { opacity: 1; }
-    40% { opacity: 0.85; }
-    100% { opacity: 0; }
+    transition: opacity 0.15s ease-out;
+    will-change: opacity;
   }
   .fx-text {
     position: fixed;
@@ -235,28 +230,7 @@
     opacity: 0;
     text-align: center;
     padding: 0 20px;
-  }
-  .fx-text.run { animation: fxtext 1.2s ease-out forwards; }
-  @keyframes fxtext {
-    0% { opacity: 0; transform: scale(0.25); }
-    14% { opacity: 1; transform: scale(1.35); }
-    28% { transform: scale(1.05); }
-    40% { transform: scale(1.15); }
-    55% { transform: scale(1); }
-    78% { opacity: 1; transform: scale(1.04); }
-    100% { opacity: 0; transform: scale(1.4); }
-  }
-  .app.fx-shake { animation: bodyshake 0.5s ease; }
-  @keyframes bodyshake {
-    0%, 100% { transform: translate(0, 0); }
-    12% { transform: translate(-7px, 4px); }
-    24% { transform: translate(6px, -5px); }
-    36% { transform: translate(-5px, -4px); }
-    48% { transform: translate(5px, 4px); }
-    60% { transform: translate(-4px, 2px); }
-    72% { transform: translate(3px, -2px); }
-    84% { transform: translate(-2px, 1px); }
-    92% { transform: translate(1px, -1px); }
+    will-change: transform, opacity;
   }
 
   .roll-btn {
@@ -483,15 +457,55 @@
     const flash = $("fxFlash");
     const txt = $("fxText");
     const app = document.querySelector(".app");
+
     txt.textContent = text;
-    flash.classList.remove("run");
-    txt.classList.remove("run");
-    app.classList.remove("fx-shake");
-    void flash.offsetWidth;
+    txt.style.transition = "none";
+    txt.style.opacity = "0";
+    txt.style.transform = "scale(0.3)";
     void txt.offsetWidth;
-    flash.classList.add("run");
-    txt.classList.add("run");
-    app.classList.add("fx-shake");
+    txt.style.transition = "opacity 0.16s ease-out, transform 0.32s cubic-bezier(.2,.8,.2,1)";
+    txt.style.opacity = "1";
+    txt.style.transform = "scale(1.12)";
+
+    flash.style.transition = "none";
+    flash.style.opacity = "0";
+    void flash.offsetWidth;
+    flash.style.transition = "opacity 0.18s ease-out";
+    flash.style.opacity = "1";
+
+    shakeApp(app);
+
+    clearTimeout(txt._hideTimer);
+    txt._hideTimer = setTimeout(function () {
+      txt.style.transition = "opacity 0.22s ease-out, transform 0.22s ease-out";
+      txt.style.opacity = "0";
+      txt.style.transform = "scale(1.4)";
+    }, 900);
+    clearTimeout(flash._hideTimer);
+    flash._hideTimer = setTimeout(function () {
+      flash.style.transition = "opacity 0.3s ease-out";
+      flash.style.opacity = "0";
+    }, 450);
+  }
+  function shakeApp(app) {
+    if (app._shaking) return;
+    app._shaking = true;
+    const start = Date.now();
+    const dur = 420;
+    function step() {
+      const p = (Date.now() - start) / dur;
+      if (p >= 1) {
+        app.style.transform = "translate(0,0)";
+        app._shaking = false;
+        return;
+      }
+      const amp = 7 * (1 - p);
+      const x = (Math.random() * 2 - 1) * amp;
+      const y = (Math.random() * 2 - 1) * amp;
+      app.style.transform = "translate(" + x + "px," + y + "px)";
+      requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
   }
   function hpColor(pct) {
     if (pct > 0.5) return "good";

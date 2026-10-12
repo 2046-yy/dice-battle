@@ -145,6 +145,7 @@
     justify-content: center;
     border: 2px solid;
     box-shadow: 0 4px 10px rgba(0,0,0,0.35);
+    position: relative;
     transition: transform 0.1s ease;
   }
   .die .label { font-size: 11px; font-weight: 700; opacity: 0.85; }
@@ -161,6 +162,74 @@
   .die.d6  { background: #15273f; border-color: #4f9dff; color: #7db8ff; }
   .die.d12 { background: #12301f; border-color: #3ddc84; color: #6ce7a4; }
   .die.d20 { background: #33162c; border-color: #c66bff; color: #d99aff; }
+
+  /* 特效：掷出最大点数 */
+  .die.max {
+    box-shadow: 0 0 0 2px var(--gold), 0 0 20px 5px rgba(255, 201, 77, 0.65);
+    animation: maxpop 0.55s ease;
+  }
+  @keyframes maxpop {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.28) rotate(-5deg); }
+    70% { transform: scale(0.94); }
+    100% { transform: scale(1); }
+  }
+  .die.max::after {
+    content: "★";
+    position: absolute;
+    top: -10px;
+    right: -8px;
+    font-size: 16px;
+    color: var(--gold);
+    text-shadow: 0 0 9px rgba(255, 201, 77, 0.95);
+    animation: starshine 0.5s ease;
+  }
+  @keyframes starshine {
+    0% { transform: scale(0) rotate(-120deg); }
+    70% { transform: scale(1.5) rotate(20deg); }
+    100% { transform: scale(1) rotate(0); }
+  }
+
+  /* 特效：暴击/最大点数 全屏反馈 */
+  .fx-flash {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 100;
+    background: radial-gradient(circle at 50% 38%, rgba(255, 240, 180, 0.95) 0%, rgba(255, 190, 80, 0.55) 32%, rgba(255, 120, 60, 0) 72%);
+    opacity: 0;
+  }
+  .fx-flash.run { animation: fxflash 0.6s ease-out; }
+  @keyframes fxflash {
+    0% { opacity: 0; }
+    15% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+  .fx-text {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 101;
+    font-size: 52px;
+    font-weight: 900;
+    letter-spacing: 4px;
+    color: var(--gold);
+    text-shadow: 0 0 16px rgba(255, 180, 60, 0.95), 0 2px 6px rgba(0, 0, 0, 0.65);
+    opacity: 0;
+    text-align: center;
+    padding: 0 16px;
+  }
+  .fx-text.run { animation: fxtext 0.9s ease-out forwards; }
+  @keyframes fxtext {
+    0% { opacity: 0; transform: scale(0.3); }
+    20% { opacity: 1; transform: scale(1.2); }
+    35% { transform: scale(1); }
+    75% { opacity: 1; transform: scale(1.06); }
+    100% { opacity: 0; transform: scale(1.35); }
+  }
 
   .roll-btn {
     width: 100%;
@@ -341,6 +410,9 @@
   </div>
 </div>
 
+<div class="fx-flash" id="fxFlash"></div>
+<div class="fx-text" id="fxText"></div>
+
 <script>
 (function () {
   "use strict";
@@ -382,6 +454,17 @@
     div.textContent = msg;
     el.log.appendChild(div);
     el.log.scrollTop = el.log.scrollHeight;
+  }
+  function triggerCrit(text) {
+    const flash = $("fxFlash");
+    const txt = $("fxText");
+    txt.textContent = text;
+    flash.classList.remove("run");
+    txt.classList.remove("run");
+    void flash.offsetWidth;
+    void txt.offsetWidth;
+    flash.classList.add("run");
+    txt.classList.add("run");
   }
   function hpColor(pct) {
     if (pct > 0.5) return "good";
@@ -467,6 +550,7 @@
     const results = dice.map((d) => rollDie(d.faces));
     const els = dieEls();
 
+    els.forEach((e) => e.classList.remove("max"));
     els.forEach((e) => e.classList.add("rolling"));
     let ticks = 0;
     const timer = setInterval(() => {
@@ -484,10 +568,16 @@
 
   function finishRoll(results) {
     const els = dieEls();
+    let hasMax = false;
     els.forEach((e, i) => {
       e.classList.remove("rolling");
       e.querySelector(".value").textContent = String(results[i]);
+      if (results[i] === state.dicePool[i].faces) {
+        e.classList.add("max");
+        hasMax = true;
+      }
     });
+    if (hasMax) triggerCrit("最大点数！");
 
     const total = results.reduce((a, b) => a + b, 0);
     const detail = results.map((r, i) => "D" + state.dicePool[i].faces + "=" + r).join("  ");

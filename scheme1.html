@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>骰子对战</title>
+<title>骰子对战 · 爬塔</title>
 <style>
   :root {
     --bg: #14181f;
@@ -39,7 +39,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    margin-bottom: 6px;
+    margin-bottom: 4px;
   }
   header h1 {
     font-size: 20px;
@@ -59,6 +59,86 @@
     white-space: nowrap;
   }
   .icon-btn:active { transform: scale(0.96); }
+
+  /* 战况状态栏（地图视图） */
+  .run-info {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
+  .run-chip {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 5px 12px;
+    font-size: 13px;
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .run-chip b { color: var(--gold); font-weight: 700; }
+
+  /* 地图 */
+  .map-wrap {
+    position: relative;
+    background: linear-gradient(180deg, #1a2230 0%, #14181f 100%);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+  }
+  .map-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+  .map-node {
+    position: absolute;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    border: 2px solid var(--border);
+    background: #232b38;
+    cursor: pointer;
+    transform: translate(-50%, -50%);
+    z-index: 2;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.4);
+  }
+  .map-node.locked { opacity: 0.35; cursor: default; filter: grayscale(0.6); }
+  .map-node.reachable {
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px rgba(255, 201, 77, 0.25), 0 0 14px rgba(255, 201, 77, 0.5);
+    animation: nodepulse 1.6s ease-in-out infinite;
+  }
+  @keyframes nodepulse {
+    0%, 100% { transform: translate(-50%, -50%) scale(1); }
+    50% { transform: translate(-50%, -50%) scale(1.12); }
+  }
+  .map-node.current {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(79, 157, 255, 0.35), 0 0 16px rgba(79, 157, 255, 0.6);
+  }
+  .map-node.type-battle { background: #18263d; }
+  .map-node.type-elite { background: #331824; border-color: #b9486d; }
+  .map-node.type-event { background: #2d2413; }
+  .map-node.type-rest { background: #14301f; }
+  .map-node.type-shop { background: #332c12; }
+  .map-node.type-chest { background: #331e12; }
+  .map-node.type-boss { background: #3a1220; border-color: var(--danger); width: 60px; height: 60px; font-size: 30px; }
+  .map-node.type-start { background: #1c2a3f; border-color: var(--accent); }
+  .map-tip {
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
 
   .level-tag {
     text-align: center;
@@ -266,6 +346,22 @@
     box-shadow: none;
     cursor: not-allowed;
   }
+  .trinket-btn {
+    width: 100%;
+    margin-top: 10px;
+    padding: 12px;
+    font-size: 14px;
+    font-weight: 700;
+    border: 1px solid var(--gold);
+    border-radius: 12px;
+    background: #2d2413;
+    color: var(--gold);
+    cursor: pointer;
+  }
+  .trinket-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
 
   /* 日志 */
   .log {
@@ -356,7 +452,6 @@
   .btn-primary { background: var(--accent); color: #fff; }
   .btn-ghost { background: var(--panel-2); color: var(--muted); border: 1px solid var(--border); }
 
-  /* 奖励三选一 */
   .reward-tip { font-size: 13px; color: var(--muted); margin: 0 0 6px; }
   .reward-grid { display: flex; flex-direction: column; gap: 10px; }
   .reward-card {
@@ -377,62 +472,102 @@
   .reward-card .txt { font-size: 15px; font-weight: 700; }
   .reward-card .desc { font-size: 12px; color: var(--muted); font-weight: 400; margin-top: 2px; }
   .reward-card.full .txt { color: var(--muted); }
+  .shop-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 13px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 10px;
+  }
+  .shop-item .ico { font-size: 24px; }
+  .shop-item .info { flex: 1; }
+  .shop-item .info .nm { font-size: 14px; font-weight: 700; }
+  .shop-item .info .ds { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .buy-btn {
+    padding: 9px 14px;
+    border-radius: 10px;
+    border: none;
+    font-weight: 700;
+    cursor: pointer;
+    background: var(--gold);
+    color: #3a2a12;
+    white-space: nowrap;
+  }
+  .buy-btn:disabled { background: var(--panel-2); color: var(--muted); cursor: not-allowed; }
 </style>
 </head>
 <body>
 <div class="app">
   <header>
-    <h1>🎲 <span class="dice">骰子对战</span></h1>
+    <h1>🎲 <span class="dice">骰子爬塔</span></h1>
     <div class="header-btns">
       <button class="icon-btn" id="restartBtn">🔄 重开</button>
       <button class="icon-btn" id="configToggle">⚙ 设置</button>
     </div>
   </header>
-  <div class="level-tag" id="levelTag">第 1 关</div>
 
-  <div class="status player" id="status">你的回合</div>
-
-  <div class="arena">
-    <div class="combatant" id="monsterPanel">
-      <div class="avatar" id="monsterAvatar">�</div>
-      <div class="name" id="monsterName">怪物</div>
-      <div class="hpbar"><div class="hpfill good" id="monsterHpFill"></div></div>
-      <div class="hp-text" id="monsterHpText">HP 0/0</div>
-      <div class="sub" id="monsterAtk">攻击 0</div>
+  <!-- 地图视图 -->
+  <div id="mapView">
+    <div class="run-info" id="runInfo"></div>
+    <div class="map-wrap" id="mapWrap">
+      <svg class="map-svg" id="mapSvg" preserveAspectRatio="none"></svg>
     </div>
-
-    <div class="vs">VS</div>
-
-    <div class="combatant" id="playerPanel">
-      <div class="avatar">🧙</div>
-      <div class="name" id="playerName">玩家</div>
-      <div class="hpbar"><div class="hpfill good" id="playerHpFill"></div></div>
-      <div class="hp-text" id="playerHpText">HP 0/0</div>
-      <div class="sub" id="playerDiceInfo">骰子 0 颗</div>
-    </div>
+    <p class="map-tip">✦ 点击高亮节点，规划你的爬塔路线 ✦</p>
   </div>
 
-  <p class="section-title">你的骰子</p>
-  <div class="dice-pool" id="dicePool"></div>
+  <!-- 战斗视图 -->
+  <div id="battleView" style="display:none">
+    <div class="level-tag" id="levelTag"></div>
+    <div class="status player" id="status">你的回合</div>
 
-  <button class="roll-btn" id="rollBtn">🎲 投掷骰子</button>
+    <div class="arena">
+      <div class="combatant" id="monsterPanel">
+        <div class="avatar" id="monsterAvatar">👾</div>
+        <div class="name" id="monsterName">怪物</div>
+        <div class="hpbar"><div class="hpfill good" id="monsterHpFill"></div></div>
+        <div class="hp-text" id="monsterHpText">HP 0/0</div>
+        <div class="sub" id="monsterAtk">攻击 0</div>
+      </div>
 
-  <div class="log">
-    <p class="section-title">战斗日志</p>
-    <div class="log-list" id="log"></div>
+      <div class="vs">VS</div>
+
+      <div class="combatant" id="playerPanel">
+        <div class="avatar">🧙</div>
+        <div class="name" id="playerName">玩家</div>
+        <div class="hpbar"><div class="hpfill good" id="playerHpFill"></div></div>
+        <div class="hp-text" id="playerHpText">HP 0/0</div>
+        <div class="sub" id="playerDiceInfo">骰子 0 颗</div>
+      </div>
+    </div>
+
+    <p class="section-title">你的骰子</p>
+    <div class="dice-pool" id="dicePool"></div>
+
+    <button class="roll-btn" id="rollBtn">🎲 投掷骰子</button>
+    <button class="trinket-btn" id="trinketBtn" style="display:none">📿 使用饰品</button>
+
+    <div class="log">
+      <p class="section-title">战斗日志</p>
+      <div class="log-list" id="log"></div>
+    </div>
   </div>
 </div>
 
 <div class="modal" id="configModal">
   <div class="modal-content">
     <h2>初始属性设置</h2>
-    <p class="reward-tip" style="margin:-6px 0 12px;">用于开始全新一局，怪物会随关卡变强。</p>
+    <p class="reward-tip" style="margin:-6px 0 12px;">用于开始全新一局，敌人会随爬塔变强。</p>
 
     <div class="field-group">
       <h3>玩家初始属性</h3>
       <div class="field"><label>名字</label><input id="pName" type="text" value="玩家"></div>
       <div class="field"><label>生命值</label><input id="pHp" type="number" min="1" value="100"></div>
       <div class="field"><label>暴击率 (%)</label><input id="pCrit" type="number" min="0" max="100" value="50"></div>
+      <div class="field"><label>初始金币</label><input id="pGold" type="number" min="0" value="15"></div>
       <div class="field"><label>四面骰 (D4) 数量</label><input id="pD4" type="number" min="0" value="0"></div>
       <div class="field"><label>六面骰 (D6) 数量</label><input id="pD6" type="number" min="0" value="2"></div>
       <div class="field"><label>十二面骰 (D12) 数量</label><input id="pD12" type="number" min="0" value="0"></div>
@@ -446,10 +581,10 @@
   </div>
 </div>
 
-<div class="modal" id="rewardModal">
+<div class="modal" id="nodeModal">
   <div class="modal-content">
-    <h2 id="rewardTitle">🏆 胜利！</h2>
-    <div id="rewardBody"></div>
+    <h2 id="nodeModalTitle">标题</h2>
+    <div id="nodeModalBody"></div>
   </div>
 </div>
 
@@ -462,11 +597,20 @@
 
   // ------- 配置（新游戏初始值） -------
   const config = {
-    player: { name: "玩家", hp: 100, critRate: 0.5, dice: { 4: 0, 6: 2, 12: 0, 20: 1 } }
+    player: { name: "玩家", hp: 100, critRate: 0.5, gold: 15, dice: { 4: 0, 6: 2, 12: 0, 20: 1 } }
   };
 
-  // ------- 怪物关卡序列 -------
-  const MONSTERS = [
+  // ------- 地图参数 -------
+  const ROWS = 6;          // 6 行：起点 + 4 层可选 + Boss
+  const SLOTS = 4;         // 每层 4 个列槽位
+  const ROW_GAP = 84, TOP_PAD = 24, BOTTOM_PAD = 16, NODE_SIZE = 52;
+  const MAP_H = TOP_PAD + (ROWS - 1) * ROW_GAP + NODE_SIZE + BOTTOM_PAD;
+
+  const CRIT_CAP = 0.6;    // 暴击率上限 60%
+  const DICE_UPGRADE = [4, 6, 12, 20];
+
+  // ------- 怪物池（普通战斗，按层难度取用） -------
+  const MONSTER_BASE = [
     { name: "史莱姆",   emoji: "🟢", hp: 30,  attack: 6 },
     { name: "哥布林",   emoji: "👺", hp: 42,  attack: 8 },
     { name: "野狼",     emoji: "🐺", hp: 55,  attack: 10 },
@@ -475,27 +619,58 @@
     { name: "暗影刺客", emoji: "🌑", hp: 108, attack: 16 },
     { name: "火焰法师", emoji: "🔥", hp: 130, attack: 18 },
     { name: "冰霜巨人", emoji: "❄️", hp: 155, attack: 20 },
-    { name: "暗黑骑士", emoji: "⚔️", hp: 185, attack: 22 },
-    { name: "远古巨龙", emoji: "🐉", hp: 220, attack: 24 }
+    { name: "暗黑骑士", emoji: "⚔️", hp: 185, attack: 22 }
   ];
-  const CRIT_CAP = 0.6;          // 暴击率上限 60%
-  const DICE_UPGRADE = [4, 6, 12, 20];
+  const BATTLE_POOL = [
+    ["史莱姆", "哥布林"],
+    ["野狼", "骷髅兵"],
+    ["石魔像", "暗影刺客"],
+    ["火焰法师", "冰霜巨人"],
+    ["暗黑骑士"]
+  ];
+  const BOSS = { name: "远古巨龙", emoji: "🐉", hp: 220, attack: 24 };
+
+  // ------- 遗物池（被动成长主力 · 节点池待补充） -------
+  const RELICS = [
+    { id: "r_hp",      ico: "❤️", name: "坚韧护符", desc: "生命上限 +15" },
+    { id: "r_crit",    ico: "🎯", name: "鹰眼",     desc: "暴击率 +8%（上限 60%）" },
+    { id: "r_d6",      ico: "🎲", name: "骰袋",     desc: "获得一颗 D6" },
+    { id: "r_upgrade", ico: "💎", name: "打磨石",   desc: "最低面数骰子升一级" },
+    { id: "r_blood",   ico: "🩸", name: "血之渴望", desc: "战斗胜利回复 5 生命" },
+    { id: "r_gold",    ico: "💰", name: "聚宝盆",   desc: "金币获取 +50%（向上取整）" }
+  ];
+
+  // ------- 饰品池（主动道具，仅能持有一个 · 节点池待补充） -------
+  const TRINKETS = [
+    { id: "t_shield", ico: "🛡️", name: "铁壁护盾", desc: "战斗中使用：回复 15 生命" },
+    { id: "t_hour",   ico: "⏳", name: "时光沙漏", desc: "战斗中使用：跳过怪物下次攻击" },
+    { id: "t_crit",   ico: "💥", name: "必杀符",   desc: "战斗中使用：下次投掷必定暴击" },
+    { id: "t_heal",   ico: "🌿", name: "回春之种", desc: "战斗中使用：回复 30 生命" }
+  ];
+
+  // ------- 事件池（占位 · 节点池待补充） -------
+  const EVENTS = [
+    { id: "shrine", ico: "🕯️", name: "古老祭坛", text: "一座古老祭坛伫立于此，似乎可以通过献上金币换来力量。" },
+    { id: "gamble", ico: "🎰", name: "神秘赌桌", text: "一个神秘骰子赌局，押上性命赌一把。" },
+    { id: "cauldron", ico: "🧪", name: "炼金釜", text: "一口冒泡的炼金釜，愿意用骰子交换金币。" }
+  ];
 
   // ------- 运行时状态 -------
   let state = null;
   let playerTurn = true;
   let busy = false;
 
-  // DOM
   const $ = (id) => document.getElementById(id);
   const el = {
+    mapView: $("mapView"), battleView: $("battleView"),
+    mapWrap: $("mapWrap"), mapSvg: $("mapSvg"), runInfo: $("runInfo"),
     status: $("status"), levelTag: $("levelTag"),
     monsterAvatar: $("monsterAvatar"), monsterName: $("monsterName"), monsterHpFill: $("monsterHpFill"), monsterHpText: $("monsterHpText"), monsterAtk: $("monsterAtk"),
     playerName: $("playerName"), playerHpFill: $("playerHpFill"), playerHpText: $("playerHpText"), playerDiceInfo: $("playerDiceInfo"),
-    dicePool: $("dicePool"), rollBtn: $("rollBtn"), log: $("log"),
+    dicePool: $("dicePool"), rollBtn: $("rollBtn"), trinketBtn: $("trinketBtn"), log: $("log"),
     configToggle: $("configToggle"), restartBtn: $("restartBtn"), configModal: $("configModal"),
     cancelBtn: $("cancelBtn"), applyBtn: $("applyBtn"),
-    rewardModal: $("rewardModal"), rewardTitle: $("rewardTitle"), rewardBody: $("rewardBody"),
+    nodeModal: $("nodeModal"), nodeModalTitle: $("nodeModalTitle"), nodeModalBody: $("nodeModalBody"),
     monsterPanel: $("monsterPanel"), playerPanel: $("playerPanel")
   };
 
@@ -537,7 +712,10 @@
 
   // ------- 工具 -------
   function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+  function pick(arr) { return arr[randInt(0, arr.length - 1)]; }
+  function shuffle(arr) { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = randInt(0, i); const t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
   function critPct() { return Math.round(state.player.critRate * 100); }
+  function hasRelic(id) { return state.relics.some((r) => r.id === id); }
   function log(msg, cls) {
     const div = document.createElement("div");
     div.className = "log-item" + (cls ? " " + cls : "");
@@ -614,16 +792,239 @@
     fill.className = "hpfill " + hpColor(pct);
     text.textContent = "HP " + Math.max(0, s.hp) + "/" + s.maxHp;
   }
+
+  // ------- 地图生成（杀戮尖塔式分层有向无环，保证可达无孤立） -------
+  function sampleCols(count) {
+    const slots = [];
+    for (let i = 0; i < SLOTS; i++) slots.push(i);
+    return shuffle(slots).slice(0, count).sort((a, b) => a - b);
+  }
+  function randomType() {
+    const r = Math.random();
+    if (r < 0.45) return "battle";
+    if (r < 0.58) return "elite";
+    if (r < 0.74) return "event";
+    if (r < 0.87) return "rest";
+    if (r < 0.94) return "shop";
+    return "chest";
+  }
+  function scaleMonster(base, mul) {
+    return { name: base.name, emoji: base.emoji, hp: Math.round(base.hp * mul), attack: Math.round(base.attack * mul) };
+  }
+  function monsterFor(type, row) {
+    if (type === "boss") return Object.assign({}, BOSS, { maxHp: BOSS.hp });
+    if (type === "elite") {
+      const base = pick(MONSTER_BASE);
+      const m = scaleMonster(base, 1.6 + row * 0.12);
+      m.name = "精英·" + base.name;
+      return m;
+    }
+    // 普通战斗
+    const names = BATTLE_POOL[Math.min(row - 1, BATTLE_POOL.length - 1)];
+    const target = pick(names);
+    const base = MONSTER_BASE.find((m) => m.name === target) || pick(MONSTER_BASE);
+    return scaleMonster(base, 1 + (row - 1) * 0.25);
+  }
+  function connect(lower, upper) {
+    lower.sort((a, b) => a.col - b.col);
+    upper.sort((a, b) => a.col - b.col);
+    // 每个上层节点至少一条入边（保证可达）
+    upper.forEach((u) => {
+      let best = lower[0], bd = Infinity;
+      lower.forEach((l) => { const d = Math.abs(l.col - u.col); if (d < bd) { bd = d; best = l; } });
+      if (best.edges.indexOf(u.id) < 0) best.edges.push(u.id);
+    });
+    // 每个下层节点至少一条出边
+    lower.forEach((l) => {
+      if (l.edges.length === 0) {
+        const u = upper.reduce((a, b) => Math.abs(a.col - l.col) <= Math.abs(b.col - l.col) ? a : b);
+        l.edges.push(u.id);
+      }
+    });
+    // 追加少量连线，增加分支感（避免重复与交叉过度）
+    lower.forEach((l) => {
+      if (l.edges.length < 2 && Math.random() < 0.55) {
+        let best = null, bd = Infinity;
+        upper.forEach((u) => {
+          if (l.edges.indexOf(u.id) >= 0) return;
+          const d = Math.abs(l.col - u.col);
+          if (d < bd) { bd = d; best = u; }
+        });
+        if (best) l.edges.push(best.id);
+      }
+    });
+  }
+  function generateMap() {
+    const nodes = [];
+    const byRow = [];
+    const mk = (row, col, type) => {
+      const node = { id: "n" + row + "-" + col, row: row, col: col, type: type, edges: [], done: false };
+      if (type !== "start") node.monster = monsterFor(type, row);
+      return node;
+    };
+    byRow.push([mk(0, 1, "start")]);                 // 起点（不占战斗）
+    for (let row = 1; row < ROWS - 1; row++) {
+      const count = randInt(2, 4);
+      const cols = sampleCols(count);
+      byRow.push(cols.map((c) => mk(row, c, randomType())));
+    }
+    byRow.push([{ id: "n" + (ROWS - 1) + "-1", row: ROWS - 1, col: 1, type: "boss", edges: [], done: false, monster: monsterFor("boss", ROWS - 1) }]);
+    for (let row = 0; row < ROWS - 1; row++) connect(byRow[row], byRow[row + 1]);
+    byRow.forEach((rowNodes) => rowNodes.forEach((n) => nodes.push(n)));
+    nodes.forEach((n) => { if (n.monster) n.monster.maxHp = n.monster.maxHp || n.monster.hp; });
+    return nodes;
+  }
+
+  // ------- 地图渲染 -------
+  const NODE_ICON = { start: "🚩", battle: "⚔️", elite: "💀", event: "❓", rest: "🔥", shop: "🛒", chest: "📦", boss: "🐉" };
+  function nodeX(col) { return ((col + 0.5) / SLOTS * 100) + "%"; }
+  function nodeY(row) { return (TOP_PAD + (ROWS - 1 - row) * ROW_GAP + NODE_SIZE / 2) + "px"; }
+  function renderMap() {
+    const cur = state.map.find((n) => n.id === state.currentId);
+    const reachable = cur ? cur.edges : [];
+
+    // 连线
+    let svg = "";
+    state.map.forEach((n) => {
+      n.edges.forEach((tid) => {
+        const t = state.map.find((x) => x.id === tid);
+        if (!t) return;
+        const x1 = nodeX(n.col), y1 = nodeY(n.row);
+        const x2 = nodeX(t.col), y2 = nodeY(t.row);
+        const active = n.id === state.currentId;
+        svg += '<line x1="' + parseFloat(x1) + '" y1="' + parseFloat(y1) + '" x2="' + parseFloat(x2) + '" y2="' + parseFloat(y2) +
+               '" stroke="' + (active ? "#ffc94d" : "#3a465a") + '" stroke-width="' + (active ? "2.5" : "1.5") + '" stroke-opacity="' + (active ? "0.9" : "0.5") + '"/>';
+      });
+    });
+    el.mapSvg.setAttribute("viewBox", "0 0 100 " + MAP_H);
+    el.mapSvg.style.height = MAP_H + "px";
+    el.mapWrap.style.height = MAP_H + "px";
+    el.mapSvg.innerHTML = svg;
+
+    // 节点
+    el.mapWrap.querySelectorAll(".map-node").forEach((e) => e.remove());
+    state.map.forEach((n) => {
+      const div = document.createElement("div");
+      div.className = "map-node type-" + n.type;
+      div.textContent = NODE_ICON[n.type] || "?";
+      div.style.left = nodeX(n.col);
+      div.style.top = nodeY(n.row);
+      if (n.id === state.currentId) div.classList.add("current");
+      else if (reachable.indexOf(n.id) >= 0) div.classList.add("reachable");
+      else div.classList.add("locked");
+      if (reachable.indexOf(n.id) >= 0 || n.id === state.currentId) {
+        div.onclick = function () { enterNode(n.id); };
+      }
+      el.mapWrap.appendChild(div);
+    });
+
+    // 顶部信息
+    const tr = state.trinket ? "📿 " + state.trinket.name : "📿 无";
+    el.runInfo.innerHTML =
+      '<span class="run-chip">🪙 <b>' + state.player.gold + '</b> 金币</span>' +
+      '<span class="run-chip">🧿 遗物 <b>' + state.relics.length + '</b></span>' +
+      '<span class="run-chip">' + tr + '</span>' +
+      '<span class="run-chip">❤️ <b>' + state.player.hp + "/" + state.player.maxHp + '</b></span>';
+  }
+
+  // ------- 视图切换 -------
+  function showView(view) {
+    el.mapView.style.display = view === "map" ? "block" : "none";
+    el.battleView.style.display = view === "battle" ? "block" : "none";
+  }
+
+  // ------- 节点进入 -------
+  function enterNode(id) {
+    if (busy || !state) return;
+    const node = state.map.find((n) => n.id === id);
+    if (!node) return;
+    const cur = state.map.find((n) => n.id === state.currentId);
+    if (cur && cur.edges.indexOf(id) < 0 && id !== state.currentId) return; // 不可达
+    state.currentId = id;
+
+    switch (node.type) {
+      case "battle":
+      case "elite":
+      case "boss":
+        goBattle(node);
+        break;
+      case "rest":
+        openRest(node);
+        break;
+      case "event":
+        openEvent(node);
+        break;
+      case "shop":
+        openShop(node);
+        break;
+      case "chest":
+        openChest(node);
+        break;
+      default:
+        finishNode(node);
+    }
+  }
+
+  function finishNode(node) {
+    node.done = true;
+    state.currentId = node.id;
+    showView("map");
+    renderMap();
+  }
+
+  // ------- 战斗 -------
+  function goBattle(node) {
+    state.monster = Object.assign({}, node.monster, { maxHp: node.monster.maxHp || node.monster.hp });
+    state.trinketUsed = false;
+    state.forceCrit = false;
+    state.skipNextAttack = false;
+    playerTurn = true;
+    busy = false;
+    el.log.innerHTML = "";
+    showView("battle");
+    renderAll();
+    updateTurnUI();
+    const tag = node.type === "boss" ? "最终 Boss" : (node.type === "elite" ? "精英战" : "第 " + node.row + " 层");
+    log("⚔️ " + tag + "：你遭遇了 " + state.monster.name + "！", "muted");
+    log("暴击率 " + critPct() + "%：暴击时额外再掷一轮全部骰子。", "muted");
+  }
+
+  function restartGame() {
+    state = {
+      currentId: "n0-1",
+      player: { name: config.player.name, hp: config.player.hp, maxHp: config.player.hp, critRate: config.player.critRate, gold: config.player.gold },
+      dicePool: [],
+      relics: [],
+      trinket: null,
+      trinketUsed: false,
+      forceCrit: false,
+      skipNextAttack: false,
+      map: [],
+      monster: null
+    };
+    const d = config.player.dice;
+    DICE_UPGRADE.forEach((faces) => {
+      for (let i = 0; i < (d[faces] || 0); i++) state.dicePool.push({ faces: Number(faces) });
+    });
+    state.map = generateMap();
+    el.nodeModal.classList.remove("open");
+    playerTurn = true;
+    busy = false;
+    showView("map");
+    renderMap();
+  }
+
   function renderAll() {
-    el.levelTag.textContent = "第 " + (state.level + 1) + " 关 / 共 " + MONSTERS.length + " 关";
+    el.levelTag.textContent = "🏰 爬塔 · 第 " + (state.currentId ? (state.map.find((n) => n.id === state.currentId) || {}).row : 0) + " 层";
     el.monsterAvatar.textContent = state.monster.emoji;
     el.monsterName.textContent = state.monster.name;
     el.playerName.textContent = state.player.name;
     el.monsterAtk.textContent = "攻击 " + state.monster.attack;
-    el.playerDiceInfo.textContent = "骰子 " + state.dicePool.length + " 颗 · 暴击 " + critPct() + "%";
+    el.playerDiceInfo.textContent = "骰子 " + state.dicePool.length + " 颗 · 暴击 " + critPct() + "% · 🪙 " + state.player.gold;
     renderHP("monster");
     renderHP("player");
     buildDicePool();
+    updateTrinketUI();
   }
   function buildDicePool() {
     el.dicePool.innerHTML = "";
@@ -638,35 +1039,6 @@
   }
   function dieEls() { return el.dicePool.querySelectorAll(".die"); }
 
-  // ------- 关卡 / 战斗流程 -------
-  function loadLevel(levelIndex) {
-    state.level = levelIndex;
-    state.monster = Object.assign({}, MONSTERS[levelIndex], { maxHp: MONSTERS[levelIndex].hp });
-    state.player.hp = state.player.maxHp;          // 进入新关回满血
-    playerTurn = true;
-    busy = false;
-    el.log.innerHTML = "";
-    renderAll();
-    updateTurnUI();
-    log("第 " + (levelIndex + 1) + " 关：你遭遇了 " + state.monster.name + "！", "muted");
-    log("暴击率 " + critPct() + "%：暴击时额外再掷一轮全部骰子。", "muted");
-  }
-
-  function restartGame() {
-    state = {
-      level: 0,
-      player: { name: config.player.name, hp: config.player.hp, maxHp: config.player.hp, critRate: config.player.critRate },
-      dicePool: [],
-      monster: null
-    };
-    const d = config.player.dice;
-    DICE_UPGRADE.forEach((faces) => {
-      for (let i = 0; i < (d[faces] || 0); i++) state.dicePool.push({ faces: Number(faces) });
-    });
-    el.rewardModal.classList.remove("open");
-    loadLevel(0);
-  }
-
   function updateTurnUI() {
     if (busy || !state) return;
     const ended = state.player.hp <= 0 || state.monster.hp <= 0;
@@ -680,6 +1052,7 @@
       el.rollBtn.disabled = true;
       el.rollBtn.textContent = "等待怪物行动…";
     }
+    updateTrinketUI();
   }
 
   function roll() {
@@ -689,6 +1062,7 @@
     busy = true;
     playerTurn = false;
     el.rollBtn.disabled = true;
+    el.trinketBtn.disabled = true;
     playSound("roll");
     const dice = state.dicePool;
 
@@ -713,7 +1087,9 @@
           if (r1[i] === dice[i].faces) { e.classList.add("max"); anyMax = true; }
         });
         if (anyMax) playSound("max");
-        const crit = Math.random() < state.player.critRate;
+        let crit;
+        if (state.forceCrit) { crit = true; state.forceCrit = false; }
+        else crit = Math.random() < state.player.critRate;
         if (crit) rollRound2(r1); else finishRoll(r1, null);
       }
     }, 55);
@@ -781,6 +1157,14 @@
   }
 
   function monsterAttack() {
+    if (state.skipNextAttack) {
+      state.skipNextAttack = false;
+      log("⏳ 时光沙漏发动，怪物这次攻击被跳过了！", "hero");
+      playerTurn = true;
+      busy = false;
+      updateTurnUI();
+      return;
+    }
     const dmg = state.monster.attack;
     log(state.monster.name + " 对你造成 " + dmg + " 点伤害！", "hit");
     state.player.hp -= dmg;
@@ -802,97 +1186,307 @@
     busy = true;
     playerTurn = false;
     el.rollBtn.disabled = true;
+    el.trinketBtn.disabled = true;
     if (win) {
       playSound("win");
       setStatus("🏆 胜利！", "win");
       el.rollBtn.textContent = "你击败了 " + state.monster.name;
-      log("🏆 你击败了 " + state.monster.name + "，获得胜利！", "hero");
-      setTimeout(showReward, 700);
+      log("🏆 你击败了 " + state.monster.name + "！", "hero");
+      const node = state.map.find((n) => n.id === state.currentId);
+      setTimeout(function () { battleVictory(node); }, 600);
     } else {
       playSound("lose");
       setStatus("💀 战败…", "lose");
-      el.rollBtn.textContent = "🔄 重新开始";
       log("💀 你被 " + state.monster.name + " 击败了……", "hit");
-      el.rollBtn.disabled = false;
+      setTimeout(loseGame, 900);
     }
   }
 
-  // ------- 胜利结算 / 成长 / 掉落 -------
-  function showReward() {
-    const isFinal = state.level >= MONSTERS.length - 1;
-    el.rewardTitle.textContent = isFinal ? "🎉 恭喜通关！" : "🏆 第 " + (state.level + 1) + " 关通关！";
-    el.rewardBody.innerHTML = "";
+  function battleVictory(node) {
+    if (node.type === "boss") { bossVictory(); return; }
+    const base = node.type === "elite" ? 25 : 10;
+    const goldGain = hasRelic("r_gold") ? Math.ceil(base * 1.5) : base;
+    state.player.gold += goldGain;
+    if (hasRelic("r_blood")) state.player.hp = Math.min(state.player.maxHp, state.player.hp + 5);
 
-    if (isFinal) {
-      const tip = document.createElement("p");
-      tip.className = "reward-tip";
-      tip.textContent = "你击败了所有 " + MONSTERS.length + " 个敌人，完成了整场冒险！";
-      el.rewardBody.appendChild(tip);
-      const btn = document.createElement("button");
-      btn.className = "btn-primary";
-      btn.style.width = "100%";
-      btn.style.padding = "13px";
-      btn.style.borderRadius = "12px";
-      btn.style.fontSize = "15px";
-      btn.style.fontWeight = "700";
-      btn.style.border = "none";
-      btn.style.cursor = "pointer";
-      btn.textContent = "🔄 重新开始";
-      btn.onclick = restartGame;
-      el.rewardBody.appendChild(btn);
-    } else {
-      const tip = document.createElement("p");
-      tip.className = "reward-tip";
-      tip.textContent = "选择一项成长奖励：";
-      el.rewardBody.appendChild(tip);
-
-      const grid = document.createElement("div");
-      grid.className = "reward-grid";
-      const rewards = [
-        { ico: "❤️", txt: "生命上限 +20", desc: "当前生命也会回满", key: "hp", full: false },
-        { ico: "💥", txt: "暴击率 +6%", desc: "上限 60%", key: "crit", full: state.player.critRate >= CRIT_CAP },
-        { ico: "🎲", txt: "骰子升级", desc: "最低面数骰子提升一级", key: "dice", full: false }
-      ];
-      rewards.forEach((r) => {
-        const card = document.createElement("button");
-        card.className = "reward-card" + (r.full ? " full" : "");
-        const ico = document.createElement("span");
-        ico.className = "ico";
-        ico.textContent = r.ico;
-        const txtWrap = document.createElement("span");
-        txtWrap.innerHTML = '<span class="txt">' + r.txt + '</span><br><span class="desc">' + r.desc + (r.full ? "（已达上限）" : "") + '</span>';
-        card.appendChild(ico);
-        card.appendChild(txtWrap);
-        if (!r.full) card.onclick = function () { applyReward(r.key); };
-        grid.appendChild(card);
-      });
-      el.rewardBody.appendChild(grid);
+    const parts = [];
+    parts.push("🪙 金币 +" + goldGain);
+    if (node.type === "elite") {
+      state.dicePool.push({ faces: 6 });
+      parts.push("🎲 额外获得一颗 D6");
     }
-    el.rewardModal.classList.add("open");
+    if (hasRelic("r_blood")) parts.push("🩸 血之渴望回复 5 生命");
+    log("结算：" + parts.join(" · "), "hero");
+
+    showRelicChoice(node, parts.join(" · "));
   }
 
-  function applyReward(key) {
-    if (key === "hp") {
-      state.player.maxHp += 20;
+  function bossVictory() {
+    openNodeModal("🎉 通关！");
+    const body = el.nodeModalBody;
+    body.innerHTML = "";
+    const tip = document.createElement("p");
+    tip.className = "reward-tip";
+    tip.textContent = "你击败了远古巨龙，登顶了骰子之塔！";
+    body.appendChild(tip);
+    const btn = mkBtn("🔄 重新开始", "btn-primary", function () { closeNodeModal(); restartGame(); });
+    btn.style.width = "100%";
+    body.appendChild(btn);
+    el.nodeModal.classList.add("open");
+  }
+
+  function loseGame() {
+    openNodeModal("💀 战败");
+    const body = el.nodeModalBody;
+    body.innerHTML = "";
+    const tip = document.createElement("p");
+    tip.className = "reward-tip";
+    tip.textContent = "你倒在了第 " + (state.map.find((n) => n.id === state.currentId) || {}).row + " 层。重新规划路线再战！";
+    body.appendChild(tip);
+    const btn = mkBtn("🔄 重新开始", "btn-primary", function () { closeNodeModal(); restartGame(); });
+    btn.style.width = "100%";
+    body.appendChild(btn);
+    el.nodeModal.classList.add("open");
+  }
+
+  // ------- 通用弹窗 -------
+  function openNodeModal(title) { el.nodeModalTitle.textContent = title; }
+  function closeNodeModal() { el.nodeModal.classList.remove("open"); }
+  function mkBtn(text, cls, onClick) {
+    const b = document.createElement("button");
+    b.textContent = text;
+    b.className = cls || "btn-primary";
+    b.style.width = "100%";
+    b.style.padding = "13px";
+    b.style.borderRadius = "12px";
+    b.style.fontSize = "15px";
+    b.style.fontWeight = "700";
+    b.style.border = "none";
+    b.style.cursor = "pointer";
+    b.onclick = onClick;
+    return b;
+  }
+
+  // ------- 遗物三选一 -------
+  function showRelicChoice(node, summary) {
+    openNodeModal("🏆 战利品 · " + summary);
+    const body = el.nodeModalBody;
+    body.innerHTML = "";
+    const tip = document.createElement("p");
+    tip.className = "reward-tip";
+    tip.textContent = "选择一项遗物（被动）成长：";
+    body.appendChild(tip);
+
+    const grid = document.createElement("div");
+    grid.className = "reward-grid";
+    const options = shuffle(RELICS).slice(0, 3);
+    options.forEach((r) => {
+      const card = document.createElement("button");
+      card.className = "reward-card";
+      const ico = document.createElement("span");
+      ico.className = "ico";
+      ico.textContent = r.ico;
+      const txtWrap = document.createElement("span");
+      txtWrap.innerHTML = '<span class="txt">' + r.name + '</span><br><span class="desc">' + r.desc + '</span>';
+      card.appendChild(ico);
+      card.appendChild(txtWrap);
+      card.onclick = function () {
+        applyRelic(r);
+        closeNodeModal();
+        finishNode(node);
+      };
+      grid.appendChild(card);
+    });
+    body.appendChild(grid);
+    el.nodeModal.classList.add("open");
+  }
+
+  function applyRelic(r) {
+    state.relics.push(r);
+    let msg = "获得遗物【" + r.name + "】";
+    if (r.id === "r_hp") { state.player.maxHp += 15; state.player.hp += 15; msg += "：生命上限 +15。"; }
+    else if (r.id === "r_crit") { state.player.critRate = Math.min(CRIT_CAP, state.player.critRate + 0.08); msg += "：暴击率 +8%（现 " + critPct() + "%）。"; }
+    else if (r.id === "r_d6") { state.dicePool.push({ faces: 6 }); msg += "：获得一颗 D6。"; }
+    else if (r.id === "r_upgrade") { upgradeMinDice(); msg += "：最低面骰子升一级。"; }
+    else if (r.id === "r_blood") { msg += "：战斗胜利将回复生命。"; }
+    else if (r.id === "r_gold") { msg += "：金币获取提升。"; }
+    log(msg, "hero");
+  }
+
+  function upgradeMinDice() {
+    const sorted = state.dicePool.slice().sort((a, b) => a.faces - b.faces);
+    const min = sorted[0];
+    if (!min) { state.dicePool.push({ faces: 6 }); return; }
+    const idx = DICE_UPGRADE.indexOf(min.faces);
+    if (idx < DICE_UPGRADE.length - 1) min.faces = DICE_UPGRADE[idx + 1];
+    else state.dicePool.push({ faces: 20 });
+  }
+
+  // ------- 饰品 -------
+  function applyTrinket(t) {
+    const old = state.trinket;
+    state.trinket = t;
+    const msg = "获得饰品【" + t.name + "】" + (old ? "（替换了 " + old.name + "）" : "");
+    log(msg, "hero");
+  }
+  function updateTrinketUI() {
+    if (!state || !state.trinket) { el.trinketBtn.style.display = "none"; return; }
+    el.trinketBtn.style.display = "block";
+    el.trinketBtn.textContent = state.trinket.ico + " " + state.trinket.name + (state.trinketUsed ? "（已用）" : "（使用）");
+    el.trinketBtn.disabled = state.trinketUsed || !playerTurn || busy;
+  }
+  function useTrinket() {
+    if (!state.trinket || state.trinketUsed || busy || !playerTurn) return;
+    const t = state.trinket;
+    state.trinketUsed = true;
+    if (t.id === "t_shield") { state.player.hp = Math.min(state.player.maxHp, state.player.hp + 15); log("🛡️ 铁壁护盾：回复 15 生命。", "hero"); renderHP("player"); }
+    else if (t.id === "t_hour") { state.skipNextAttack = true; log("⏳ 时光沙漏：下次怪物攻击将被跳过。", "hero"); }
+    else if (t.id === "t_crit") { state.forceCrit = true; log("💥 必杀符：下次投掷必定暴击。", "hero"); }
+    else if (t.id === "t_heal") { state.player.hp = Math.min(state.player.maxHp, state.player.hp + 30); log("🌿 回春之种：回复 30 生命。", "hero"); renderHP("player"); }
+    playSound("win");
+    updateTrinketUI();
+  }
+
+  // ------- 节点内容：休息 / 事件 / 商店 / 宝箱 -------
+  function openRest(node) {
+    const heal = Math.round(state.player.maxHp * 0.3);
+    state.player.hp = Math.min(state.player.maxHp, state.player.hp + heal);
+    openNodeModal("🔥 篝火休息");
+    const body = el.nodeModalBody;
+    body.innerHTML = "";
+    const tip = document.createElement("p");
+    tip.className = "reward-tip";
+    tip.textContent = "你燃起篝火，回复了 " + heal + " 生命（现 " + state.player.hp + "/" + state.player.maxHp + "）。";
+    body.appendChild(tip);
+
+    const actions = document.createElement("div");
+    actions.className = "modal-actions";
+    const buyFull = mkBtn("付费回满（30 金币）", "btn-ghost", function () {
+      if (state.player.gold < 30) { alert("金币不足"); return; }
+      state.player.gold -= 30;
       state.player.hp = state.player.maxHp;
-      log("成长：生命上限 +20。", "hero");
-    } else if (key === "crit") {
-      state.player.critRate = Math.min(CRIT_CAP, state.player.critRate + 0.06);
-      log("成长：暴击率 +6%（现 " + critPct() + "%）。", "hero");
-    } else if (key === "dice") {
-      const sorted = state.dicePool.slice().sort((a, b) => a.faces - b.faces);
-      const min = sorted[0];
-      const idx = DICE_UPGRADE.indexOf(min.faces);
-      if (idx < DICE_UPGRADE.length - 1) {
-        min.faces = DICE_UPGRADE[idx + 1];
-        log("成长：一颗 D" + DICE_UPGRADE[idx] + " 升级为 D" + min.faces + "。", "hero");
-      } else {
-        state.dicePool.push({ faces: 20 });
-        log("成长：获得一颗新的 D20！", "hero");
-      }
+      closeNodeModal();
+      finishNode(node);
+    });
+    if (state.player.gold < 30 || state.player.hp >= state.player.maxHp) buyFull.disabled = true;
+    const go = mkBtn("继续前进", "btn-primary", function () { closeNodeModal(); finishNode(node); });
+    actions.appendChild(buyFull);
+    actions.appendChild(go);
+    body.appendChild(actions);
+    el.nodeModal.classList.add("open");
+  }
+
+  function openEvent(node) {
+    const ev = pick(EVENTS);
+    openNodeModal(ev.ico + " " + ev.name);
+    const body = el.nodeModalBody;
+    body.innerHTML = "";
+    const tip = document.createElement("p");
+    tip.className = "reward-tip";
+    tip.textContent = ev.text;
+    body.appendChild(tip);
+    const actions = document.createElement("div");
+    actions.className = "modal-actions";
+
+    if (ev.id === "shrine") {
+      const a = mkBtn("献上 20 金币（生命上限+10）", "btn-primary", function () {
+        if (state.player.gold < 20) { alert("金币不足"); return; }
+        state.player.gold -= 20;
+        state.player.maxHp += 10; state.player.hp += 10;
+        log("🕯️ 祭坛赐福：生命上限 +10。", "hero");
+        closeNodeModal(); finishNode(node);
+      });
+      if (state.player.gold < 20) a.disabled = true;
+      const b = mkBtn("离开", "btn-ghost", function () { closeNodeModal(); finishNode(node); });
+      actions.appendChild(a); actions.appendChild(b);
+    } else if (ev.id === "gamble") {
+      const a = mkBtn("押上生命赌一把", "btn-primary", function () {
+        const rollv = randInt(1, 6);
+        if (rollv >= 4) { const g = 30; state.player.gold += g; log("🎰 押中 " + rollv + " 点，获得 " + g + " 金币！", "hero"); }
+        else { state.player.hp = Math.max(1, state.player.hp - 10); log("🎰 押中 " + rollv + " 点，损失 10 生命。", "hit"); }
+        closeNodeModal(); finishNode(node);
+      });
+      const b = mkBtn("离开", "btn-ghost", function () { closeNodeModal(); finishNode(node); });
+      actions.appendChild(a); actions.appendChild(b);
+    } else if (ev.id === "cauldron") {
+      const a = mkBtn("献出最低面骰子（+15 金币）", "btn-primary", function () {
+        const sorted = state.dicePool.slice().sort((x, y) => x.faces - y.faces);
+        if (sorted.length < 2) { alert("至少保留一颗骰子才能献出"); return; }
+        const min = sorted[0];
+        state.dicePool.splice(state.dicePool.indexOf(min), 1);
+        state.player.gold += 15;
+        log("🧪 炼金釜炼化了一颗 D" + min.faces + "，获得 15 金币。", "hero");
+        closeNodeModal(); finishNode(node);
+      });
+      const b = mkBtn("离开", "btn-ghost", function () { closeNodeModal(); finishNode(node); });
+      actions.appendChild(a); actions.appendChild(b);
     }
-    el.rewardModal.classList.remove("open");
-    loadLevel(state.level + 1);
+    body.appendChild(actions);
+    el.nodeModal.classList.add("open");
+  }
+
+  function openShop(node) {
+    openNodeModal("🛒 商店");
+    const body = el.nodeModalBody;
+    body.innerHTML = "";
+    const tip = document.createElement("p");
+    tip.className = "reward-tip";
+    tip.textContent = "当前金币：🪙 " + state.player.gold;
+    body.appendChild(tip);
+
+    const items = shuffle([
+      { ico: "🎲", name: "D12 骰子", desc: "获得一颗 D12", price: 40, buy: function () { state.dicePool.push({ faces: 12 }); log("🛒 购买了 D12 骰子。", "hero"); } },
+      { ico: "❤️", name: "回满生命", desc: "完全回复生命值", price: 35, buy: function () { state.player.hp = state.player.maxHp; log("🛒 购买生命回复，生命已回满。", "hero"); } },
+      { ico: "🧿", name: "随机遗物", desc: "随机获得一个遗物", price: 70, buy: function () { applyRelic(pick(RELICS)); } },
+      { ico: "📿", name: "随机饰品", desc: "随机获得一个饰品", price: 60, buy: function () { applyTrinket(pick(TRINKETS)); } }
+    ]).slice(0, 3);
+
+    items.forEach((it) => {
+      const row = document.createElement("div");
+      row.className = "shop-item";
+      row.innerHTML = '<span class="ico">' + it.ico + '</span><span class="info"><span class="nm">' + it.name + '</span><br><span class="ds">' + it.desc + '</span></span>';
+      const buy = document.createElement("button");
+      buy.className = "buy-btn";
+      buy.textContent = "🪙 " + it.price;
+      buy.onclick = function () {
+        if (state.player.gold < it.price) return;
+        state.player.gold -= it.price;
+        it.buy();
+        buy.disabled = true;
+        buy.textContent = "已购买";
+        tip.textContent = "当前金币：🪙 " + state.player.gold;
+      };
+      row.appendChild(buy);
+      body.appendChild(row);
+    });
+
+    const actions = document.createElement("div");
+    actions.className = "modal-actions";
+    const go = mkBtn("离开商店", "btn-primary", function () { closeNodeModal(); finishNode(node); });
+    actions.appendChild(go);
+    body.appendChild(actions);
+    el.nodeModal.classList.add("open");
+  }
+
+  function openChest(node) {
+    const rollv = Math.random();
+    let txt, apply;
+    if (rollv < 0.3) { const g = randInt(15, 30); state.player.gold += g; txt = "🪙 获得 " + g + " 金币！"; }
+    else if (rollv < 0.5) { const f = pick([6, 6, 12]); state.dicePool.push({ faces: f }); txt = "🎲 获得一颗 D" + f + "！"; }
+    else if (rollv < 0.75) { const r = pick(RELICS); applyRelic(r); txt = "🧿 获得遗物【" + r.name + "】！"; }
+    else { const t = pick(TRINKETS); applyTrinket(t); txt = "📿 获得饰品【" + t.name + "】！"; }
+
+    openNodeModal("📦 宝箱");
+    const body = el.nodeModalBody;
+    body.innerHTML = "";
+    const tip = document.createElement("p");
+    tip.className = "reward-tip";
+    tip.textContent = "你打开了宝箱……" + txt;
+    body.appendChild(tip);
+    const btn = mkBtn("继续前进", "btn-primary", function () { closeNodeModal(); finishNode(node); });
+    body.appendChild(btn);
+    el.nodeModal.classList.add("open");
+    playSound("win");
   }
 
   // ------- 设置面板 -------
@@ -900,6 +1494,7 @@
     $("pName").value = config.player.name;
     $("pHp").value = config.player.hp;
     $("pCrit").value = Math.round(config.player.critRate * 100);
+    $("pGold").value = config.player.gold;
     $("pD4").value = config.player.dice[4];
     $("pD6").value = config.player.dice[6];
     $("pD12").value = config.player.dice[12];
@@ -912,6 +1507,7 @@
     const pName = $("pName").value.trim() || "玩家";
     const pHp = parseInt($("pHp").value, 10);
     const crit = parseInt($("pCrit").value, 10);
+    const gold = parseInt($("pGold").value, 10);
     const d4 = parseInt($("pD4").value, 10);
     const d6 = parseInt($("pD6").value, 10);
     const d12 = parseInt($("pD12").value, 10);
@@ -922,7 +1518,7 @@
     const totalDice = [d4, d6, d12, d20].reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0);
     if (totalDice <= 0) { alert("至少需要一颗骰子"); return; }
 
-    config.player = { name: pName, hp: pHp, critRate: Math.min(CRIT_CAP, crit / 100), dice: { 4: d4, 6: d6, 12: d12, 20: d20 } };
+    config.player = { name: pName, hp: pHp, critRate: Math.min(CRIT_CAP, crit / 100), gold: Number.isFinite(gold) && gold >= 0 ? gold : 15, dice: { 4: d4, 6: d6, 12: d12, 20: d20 } };
     closeModal();
     restartGame();
   }
@@ -932,6 +1528,7 @@
     if (state && state.player.hp <= 0) { restartGame(); return; }
     roll();
   });
+  el.trinketBtn.addEventListener("click", useTrinket);
   el.configToggle.addEventListener("click", openModal);
   el.restartBtn.addEventListener("click", function () {
     if (confirm("确定重新开始？当前进度会清空。")) restartGame();

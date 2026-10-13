@@ -968,6 +968,8 @@
   function finishNode(node) {
     node.done = true;
     state.currentId = node.id;
+    busy = false;
+    playerTurn = true;
     showView("map");
     renderMap();
   }

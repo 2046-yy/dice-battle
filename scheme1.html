@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>骰子对战 · 方案一</title>
+<title>骰子对战</title>
 <style>
   :root {
     --bg: #14181f;
@@ -38,6 +38,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 8px;
     margin-bottom: 6px;
   }
   header h1 {
@@ -46,23 +47,26 @@
     letter-spacing: 1px;
   }
   header h1 .dice { color: var(--gold); }
+  .header-btns { display: flex; gap: 8px; }
   .icon-btn {
     background: var(--panel);
     border: 1px solid var(--border);
     color: var(--text);
     font-size: 14px;
-    padding: 9px 14px;
+    padding: 9px 12px;
     border-radius: 12px;
     cursor: pointer;
+    white-space: nowrap;
   }
   .icon-btn:active { transform: scale(0.96); }
 
-  .scheme-tag {
+  .level-tag {
     text-align: center;
-    font-size: 12px;
+    font-size: 13px;
     color: var(--gold);
     margin: 0 0 12px;
     letter-spacing: 1px;
+    font-weight: 600;
   }
 
   /* 状态栏 */
@@ -97,6 +101,7 @@
     border-radius: 16px;
     padding: 14px 12px;
     text-align: center;
+    transition: box-shadow 0.3s ease;
   }
   .combatant .avatar { font-size: 34px; line-height: 1; margin-bottom: 6px; }
   .combatant .name {
@@ -125,6 +130,14 @@
   .hpfill.bad { background: var(--danger); }
   .hp-text { font-size: 12px; color: var(--muted); }
   .sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .combatant.hit .avatar { animation: hitflash 0.4s ease; }
+  @keyframes hitflash {
+    0% { transform: translateX(0); }
+    25% { transform: translateX(-6px); }
+    50% { transform: translateX(6px); }
+    75% { transform: translateX(-3px); }
+    100% { transform: translateX(0); }
+  }
 
   /* 骰子区 */
   .section-title {
@@ -197,7 +210,7 @@
     100% { transform: scale(1) rotate(0); }
   }
 
-  /* 特效：暴击/最大点数 全屏反馈（JS 驱动 opacity，避免移动端 CSS animation 被节流） */
+  /* 特效：全屏反馈（JS 驱动 opacity，避免移动端 CSS animation 被节流） */
   .fx-flash {
     position: fixed;
     top: 0;
@@ -278,7 +291,7 @@
   .log-item.hit { color: var(--danger); }
   .log-item.hero { color: var(--good); }
 
-  /* 设置弹窗 */
+  /* 弹窗 */
   .modal {
     position: fixed;
     inset: 0;
@@ -342,21 +355,46 @@
   }
   .btn-primary { background: var(--accent); color: #fff; }
   .btn-ghost { background: var(--panel-2); color: var(--muted); border: 1px solid var(--border); }
+
+  /* 奖励三选一 */
+  .reward-tip { font-size: 13px; color: var(--muted); margin: 0 0 6px; }
+  .reward-grid { display: flex; flex-direction: column; gap: 10px; }
+  .reward-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 14px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
+    cursor: pointer;
+    text-align: left;
+  }
+  .reward-card:active { transform: scale(0.98); border-color: var(--accent); }
+  .reward-card .ico { font-size: 26px; line-height: 1; }
+  .reward-card .txt { font-size: 15px; font-weight: 700; }
+  .reward-card .desc { font-size: 12px; color: var(--muted); font-weight: 400; margin-top: 2px; }
+  .reward-card.full .txt { color: var(--muted); }
 </style>
 </head>
 <body>
 <div class="app">
   <header>
     <h1>🎲 <span class="dice">骰子对战</span></h1>
-    <button class="icon-btn" id="configToggle">⚙ 设置</button>
+    <div class="header-btns">
+      <button class="icon-btn" id="restartBtn">🔄 重开</button>
+      <button class="icon-btn" id="configToggle">⚙ 设置</button>
+    </div>
   </header>
-  <div class="scheme-tag">方案一 · 暴击时额外掷一轮全部骰子</div>
+  <div class="level-tag" id="levelTag">第 1 关</div>
 
   <div class="status player" id="status">你的回合</div>
 
   <div class="arena">
     <div class="combatant" id="monsterPanel">
-      <div class="avatar">👹</div>
+      <div class="avatar" id="monsterAvatar">�</div>
       <div class="name" id="monsterName">怪物</div>
       <div class="hpbar"><div class="hpfill good" id="monsterHpFill"></div></div>
       <div class="hp-text" id="monsterHpText">HP 0/0</div>
@@ -387,10 +425,11 @@
 
 <div class="modal" id="configModal">
   <div class="modal-content">
-    <h2>属性设置</h2>
+    <h2>初始属性设置</h2>
+    <p class="reward-tip" style="margin:-6px 0 12px;">用于开始全新一局，怪物会随关卡变强。</p>
 
     <div class="field-group">
-      <h3>玩家属性</h3>
+      <h3>玩家初始属性</h3>
       <div class="field"><label>名字</label><input id="pName" type="text" value="玩家"></div>
       <div class="field"><label>生命值</label><input id="pHp" type="number" min="1" value="100"></div>
       <div class="field"><label>暴击率 (%)</label><input id="pCrit" type="number" min="0" max="100" value="50"></div>
@@ -400,17 +439,17 @@
       <div class="field"><label>二十面骰 (D20) 数量</label><input id="pD20" type="number" min="0" value="1"></div>
     </div>
 
-    <div class="field-group">
-      <h3>怪物属性</h3>
-      <div class="field"><label>名字</label><input id="mName" type="text" value="史莱姆"></div>
-      <div class="field"><label>生命值</label><input id="mHp" type="number" min="1" value="30"></div>
-      <div class="field"><label>固定攻击力</label><input id="mAtk" type="number" min="0" value="8"></div>
-    </div>
-
     <div class="modal-actions">
       <button class="btn-ghost" id="cancelBtn">取消</button>
-      <button class="btn-primary" id="applyBtn">应用并开始</button>
+      <button class="btn-primary" id="applyBtn">开始新游戏</button>
     </div>
+  </div>
+</div>
+
+<div class="modal" id="rewardModal">
+  <div class="modal-content">
+    <h2 id="rewardTitle">🏆 胜利！</h2>
+    <div id="rewardBody"></div>
   </div>
 </div>
 
@@ -421,12 +460,26 @@
 (function () {
   "use strict";
 
-  // ------- 配置（默认值） -------
+  // ------- 配置（新游戏初始值） -------
   const config = {
-    player: { name: "玩家", hp: 100, dice: { 4: 0, 6: 2, 12: 0, 20: 1 } },
-    monster: { name: "史莱姆", hp: 30, attack: 8 },
-    critRate: 0.5
+    player: { name: "玩家", hp: 100, critRate: 0.5, dice: { 4: 0, 6: 2, 12: 0, 20: 1 } }
   };
+
+  // ------- 怪物关卡序列 -------
+  const MONSTERS = [
+    { name: "史莱姆",   emoji: "🟢", hp: 30,  attack: 6 },
+    { name: "哥布林",   emoji: "👺", hp: 42,  attack: 8 },
+    { name: "野狼",     emoji: "🐺", hp: 55,  attack: 10 },
+    { name: "骷髅兵",   emoji: "💀", hp: 70,  attack: 12 },
+    { name: "石魔像",   emoji: "🗿", hp: 88,  attack: 14 },
+    { name: "暗影刺客", emoji: "🌑", hp: 108, attack: 16 },
+    { name: "火焰法师", emoji: "🔥", hp: 130, attack: 18 },
+    { name: "冰霜巨人", emoji: "❄️", hp: 155, attack: 20 },
+    { name: "暗黑骑士", emoji: "⚔️", hp: 185, attack: 22 },
+    { name: "远古巨龙", emoji: "🐉", hp: 220, attack: 24 }
+  ];
+  const CRIT_CAP = 0.6;          // 暴击率上限 60%
+  const DICE_UPGRADE = [4, 6, 12, 20];
 
   // ------- 运行时状态 -------
   let state = null;
@@ -436,16 +489,55 @@
   // DOM
   const $ = (id) => document.getElementById(id);
   const el = {
-    status: $("status"),
-    monsterName: $("monsterName"), monsterHpFill: $("monsterHpFill"), monsterHpText: $("monsterHpText"), monsterAtk: $("monsterAtk"),
+    status: $("status"), levelTag: $("levelTag"),
+    monsterAvatar: $("monsterAvatar"), monsterName: $("monsterName"), monsterHpFill: $("monsterHpFill"), monsterHpText: $("monsterHpText"), monsterAtk: $("monsterAtk"),
     playerName: $("playerName"), playerHpFill: $("playerHpFill"), playerHpText: $("playerHpText"), playerDiceInfo: $("playerDiceInfo"),
     dicePool: $("dicePool"), rollBtn: $("rollBtn"), log: $("log"),
-    configToggle: $("configToggle"), configModal: $("configModal"),
-    cancelBtn: $("cancelBtn"), applyBtn: $("applyBtn")
+    configToggle: $("configToggle"), restartBtn: $("restartBtn"), configModal: $("configModal"),
+    cancelBtn: $("cancelBtn"), applyBtn: $("applyBtn"),
+    rewardModal: $("rewardModal"), rewardTitle: $("rewardTitle"), rewardBody: $("rewardBody"),
+    monsterPanel: $("monsterPanel"), playerPanel: $("playerPanel")
   };
+
+  // ------- 音效引擎（Web Audio，免外部文件） -------
+  let audioCtx = null;
+  function ensureAudio() {
+    try {
+      if (!audioCtx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (AC) audioCtx = new AC();
+      }
+      if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+    } catch (e) {}
+  }
+  function tone(freq, dur, type, vol, when) {
+    if (!audioCtx) return;
+    try {
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.type = type;
+      o.frequency.value = freq;
+      g.gain.setValueAtTime(Math.max(0.0001, vol), when);
+      g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start(when); o.stop(when + dur);
+    } catch (e) {}
+  }
+  function playSound(name) {
+    ensureAudio();
+    if (!audioCtx) return;
+    const t = audioCtx.currentTime;
+    if (name === "roll") { tone(320 + Math.random() * 200, 0.08, "square", 0.06, t); }
+    else if (name === "crit") { tone(220, 0.4, "triangle", 0.2, t); tone(880, 0.3, "sawtooth", 0.16, t); tone(1320, 0.25, "square", 0.1, t + 0.04); }
+    else if (name === "max") { tone(1600, 0.16, "sine", 0.13, t); tone(2400, 0.1, "sine", 0.08, t + 0.05); }
+    else if (name === "hit") { tone(180, 0.18, "square", 0.13, t); }
+    else if (name === "win") { [523, 659, 784, 1046].forEach((f, i) => tone(f, 0.22, "triangle", 0.14, t + i * 0.12)); }
+    else if (name === "lose") { [400, 300, 200].forEach((f, i) => tone(f, 0.28, "sawtooth", 0.1, t + i * 0.16)); }
+  }
 
   // ------- 工具 -------
   function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+  function critPct() { return Math.round(state.player.critRate * 100); }
   function log(msg, cls) {
     const div = document.createElement("div");
     div.className = "log-item" + (cls ? " " + cls : "");
@@ -454,6 +546,7 @@
     el.log.scrollTop = el.log.scrollHeight;
   }
   function triggerCrit(text) {
+    playSound("crit");
     const flash = $("fxFlash");
     const txt = $("fxText");
     const app = document.querySelector(".app");
@@ -494,18 +587,17 @@
     const dur = 420;
     function step() {
       const p = (Date.now() - start) / dur;
-      if (p >= 1) {
-        app.style.transform = "translate(0,0)";
-        app._shaking = false;
-        return;
-      }
+      if (p >= 1) { app.style.transform = "translate(0,0)"; app._shaking = false; return; }
       const amp = 7 * (1 - p);
-      const x = (Math.random() * 2 - 1) * amp;
-      const y = (Math.random() * 2 - 1) * amp;
-      app.style.transform = "translate(" + x + "px," + y + "px)";
+      app.style.transform = "translate(" + ((Math.random() * 2 - 1) * amp) + "px," + ((Math.random() * 2 - 1) * amp) + "px)";
       requestAnimationFrame(step);
     }
     requestAnimationFrame(step);
+  }
+  function hitFlash(panel) {
+    panel.classList.remove("hit");
+    void panel.offsetWidth;
+    panel.classList.add("hit");
   }
   function hpColor(pct) {
     if (pct > 0.5) return "good";
@@ -523,18 +615,20 @@
     text.textContent = "HP " + Math.max(0, s.hp) + "/" + s.maxHp;
   }
   function renderAll() {
+    el.levelTag.textContent = "第 " + (state.level + 1) + " 关 / 共 " + MONSTERS.length + " 关";
+    el.monsterAvatar.textContent = state.monster.emoji;
     el.monsterName.textContent = state.monster.name;
     el.playerName.textContent = state.player.name;
     el.monsterAtk.textContent = "攻击 " + state.monster.attack;
-    el.playerDiceInfo.textContent = "骰子 " + state.dicePool.length + " 颗";
+    el.playerDiceInfo.textContent = "骰子 " + state.dicePool.length + " 颗 · 暴击 " + critPct() + "%";
     renderHP("monster");
     renderHP("player");
     buildDicePool();
   }
   function buildDicePool() {
     el.dicePool.innerHTML = "";
-    const sorted = state.dicePool.slice().sort((a, b) => a.faces - b.faces);
-    sorted.forEach((d, idx) => {
+    state.dicePool.sort((a, b) => a.faces - b.faces);
+    state.dicePool.forEach((d, idx) => {
       const die = document.createElement("div");
       die.className = "die d" + d.faces;
       die.dataset.idx = String(idx);
@@ -544,24 +638,33 @@
   }
   function dieEls() { return el.dicePool.querySelectorAll(".die"); }
 
-  // ------- 战斗流程 -------
-  function resetBattle() {
-    state = {
-      player: { name: config.player.name, hp: config.player.hp, maxHp: config.player.hp },
-      monster: { name: config.monster.name, hp: config.monster.hp, maxHp: config.monster.hp, attack: config.monster.attack },
-      dicePool: []
-    };
-    const d = config.player.dice;
-    [4, 6, 12, 20].forEach((faces) => {
-      for (let i = 0; i < (d[faces] || 0); i++) state.dicePool.push({ faces: Number(faces) });
-    });
+  // ------- 关卡 / 战斗流程 -------
+  function loadLevel(levelIndex) {
+    state.level = levelIndex;
+    state.monster = Object.assign({}, MONSTERS[levelIndex], { maxHp: MONSTERS[levelIndex].hp });
+    state.player.hp = state.player.maxHp;          // 进入新关回满血
     playerTurn = true;
     busy = false;
     el.log.innerHTML = "";
     renderAll();
     updateTurnUI();
-    log("战斗开始！由你先手。", "muted");
-    log("暴击率 " + Math.round(config.critRate * 100) + "%：暴击时额外再掷一轮全部骰子。", "muted");
+    log("第 " + (levelIndex + 1) + " 关：你遭遇了 " + state.monster.name + "！", "muted");
+    log("暴击率 " + critPct() + "%：暴击时额外再掷一轮全部骰子。", "muted");
+  }
+
+  function restartGame() {
+    state = {
+      level: 0,
+      player: { name: config.player.name, hp: config.player.hp, maxHp: config.player.hp, critRate: config.player.critRate },
+      dicePool: [],
+      monster: null
+    };
+    const d = config.player.dice;
+    DICE_UPGRADE.forEach((faces) => {
+      for (let i = 0; i < (d[faces] || 0); i++) state.dicePool.push({ faces: Number(faces) });
+    });
+    el.rewardModal.classList.remove("open");
+    loadLevel(0);
   }
 
   function updateTurnUI() {
@@ -586,6 +689,7 @@
     busy = true;
     playerTurn = false;
     el.rollBtn.disabled = true;
+    playSound("roll");
     const dice = state.dicePool;
 
     const r1 = dice.map((d) => randInt(1, d.faces));
@@ -602,12 +706,14 @@
       ticks++;
       if (ticks >= 12) {
         clearInterval(timer);
+        let anyMax = false;
         els.forEach((e, i) => {
           e.classList.remove("rolling");
           e.querySelector(".value").textContent = String(r1[i]);
-          if (r1[i] === dice[i].faces) e.classList.add("max");
+          if (r1[i] === dice[i].faces) { e.classList.add("max"); anyMax = true; }
         });
-        const crit = Math.random() < config.critRate;
+        if (anyMax) playSound("max");
+        const crit = Math.random() < state.player.critRate;
         if (crit) rollRound2(r1); else finishRoll(r1, null);
       }
     }, 55);
@@ -632,11 +738,13 @@
       ticks++;
       if (ticks >= 12) {
         clearInterval(timer);
+        let anyMax = false;
         els.forEach((e, i) => {
           e.classList.remove("rolling");
           e.querySelector(".value").textContent = String(r1[i] + r2[i]);
-          if (r2[i] === dice[i].faces) e.classList.add("max");
+          if (r2[i] === dice[i].faces) { e.classList.add("max"); anyMax = true; }
         });
+        if (anyMax) playSound("max");
         finishRoll(r1, r2);
       }
     }, 55);
@@ -650,15 +758,16 @@
       const s2 = r2.reduce((a, b) => a + b, 0);
       total = s1 + s2;
       log("第一轮 " + s1 + "，第二轮 " + s2 + "，合计 " + total + "。", "muted");
-      log("你对 " + state.monster.name + " 造成 " + total + " 点伤害！", "dmg");
     } else {
       total = r1.reduce((a, b) => a + b, 0);
       const detail = dice.map((d, i) => "D" + d.faces + "=" + r1[i]).join("  ");
       log("你投掷了 " + dice.length + " 颗骰子：" + detail, "muted");
-      log("你对 " + state.monster.name + " 造成 " + total + " 点伤害！", "dmg");
     }
+    log("你对 " + state.monster.name + " 造成 " + total + " 点伤害！", "dmg");
 
     state.monster.hp -= total;
+    playSound("hit");
+    hitFlash(el.monsterPanel);
     renderHP("monster");
 
     if (state.monster.hp <= 0) {
@@ -675,6 +784,8 @@
     const dmg = state.monster.attack;
     log(state.monster.name + " 对你造成 " + dmg + " 点伤害！", "hit");
     state.player.hp -= dmg;
+    playSound("hit");
+    hitFlash(el.playerPanel);
     renderHP("player");
     if (state.player.hp <= 0) {
       state.player.hp = 0;
@@ -692,28 +803,107 @@
     playerTurn = false;
     el.rollBtn.disabled = true;
     if (win) {
+      playSound("win");
       setStatus("🏆 胜利！", "win");
       el.rollBtn.textContent = "你击败了 " + state.monster.name;
       log("🏆 你击败了 " + state.monster.name + "，获得胜利！", "hero");
+      setTimeout(showReward, 700);
     } else {
+      playSound("lose");
       setStatus("💀 战败…", "lose");
-      el.rollBtn.textContent = "战斗结束";
+      el.rollBtn.textContent = "🔄 重新开始";
       log("💀 你被 " + state.monster.name + " 击败了……", "hit");
+      el.rollBtn.disabled = false;
     }
+  }
+
+  // ------- 胜利结算 / 成长 / 掉落 -------
+  function showReward() {
+    const isFinal = state.level >= MONSTERS.length - 1;
+    el.rewardTitle.textContent = isFinal ? "🎉 恭喜通关！" : "🏆 第 " + (state.level + 1) + " 关通关！";
+    el.rewardBody.innerHTML = "";
+
+    if (isFinal) {
+      const tip = document.createElement("p");
+      tip.className = "reward-tip";
+      tip.textContent = "你击败了所有 " + MONSTERS.length + " 个敌人，完成了整场冒险！";
+      el.rewardBody.appendChild(tip);
+      const btn = document.createElement("button");
+      btn.className = "btn-primary";
+      btn.style.width = "100%";
+      btn.style.padding = "13px";
+      btn.style.borderRadius = "12px";
+      btn.style.fontSize = "15px";
+      btn.style.fontWeight = "700";
+      btn.style.border = "none";
+      btn.style.cursor = "pointer";
+      btn.textContent = "🔄 重新开始";
+      btn.onclick = restartGame;
+      el.rewardBody.appendChild(btn);
+    } else {
+      const tip = document.createElement("p");
+      tip.className = "reward-tip";
+      tip.textContent = "选择一项成长奖励：";
+      el.rewardBody.appendChild(tip);
+
+      const grid = document.createElement("div");
+      grid.className = "reward-grid";
+      const rewards = [
+        { ico: "❤️", txt: "生命上限 +20", desc: "当前生命也会回满", key: "hp", full: false },
+        { ico: "💥", txt: "暴击率 +6%", desc: "上限 60%", key: "crit", full: state.player.critRate >= CRIT_CAP },
+        { ico: "🎲", txt: "骰子升级", desc: "最低面数骰子提升一级", key: "dice", full: false }
+      ];
+      rewards.forEach((r) => {
+        const card = document.createElement("button");
+        card.className = "reward-card" + (r.full ? " full" : "");
+        const ico = document.createElement("span");
+        ico.className = "ico";
+        ico.textContent = r.ico;
+        const txtWrap = document.createElement("span");
+        txtWrap.innerHTML = '<span class="txt">' + r.txt + '</span><br><span class="desc">' + r.desc + (r.full ? "（已达上限）" : "") + '</span>';
+        card.appendChild(ico);
+        card.appendChild(txtWrap);
+        if (!r.full) card.onclick = function () { applyReward(r.key); };
+        grid.appendChild(card);
+      });
+      el.rewardBody.appendChild(grid);
+    }
+    el.rewardModal.classList.add("open");
+  }
+
+  function applyReward(key) {
+    if (key === "hp") {
+      state.player.maxHp += 20;
+      state.player.hp = state.player.maxHp;
+      log("成长：生命上限 +20。", "hero");
+    } else if (key === "crit") {
+      state.player.critRate = Math.min(CRIT_CAP, state.player.critRate + 0.06);
+      log("成长：暴击率 +6%（现 " + critPct() + "%）。", "hero");
+    } else if (key === "dice") {
+      const sorted = state.dicePool.slice().sort((a, b) => a.faces - b.faces);
+      const min = sorted[0];
+      const idx = DICE_UPGRADE.indexOf(min.faces);
+      if (idx < DICE_UPGRADE.length - 1) {
+        min.faces = DICE_UPGRADE[idx + 1];
+        log("成长：一颗 D" + DICE_UPGRADE[idx] + " 升级为 D" + min.faces + "。", "hero");
+      } else {
+        state.dicePool.push({ faces: 20 });
+        log("成长：获得一颗新的 D20！", "hero");
+      }
+    }
+    el.rewardModal.classList.remove("open");
+    loadLevel(state.level + 1);
   }
 
   // ------- 设置面板 -------
   function openModal() {
     $("pName").value = config.player.name;
     $("pHp").value = config.player.hp;
-    $("pCrit").value = Math.round(config.critRate * 100);
+    $("pCrit").value = Math.round(config.player.critRate * 100);
     $("pD4").value = config.player.dice[4];
     $("pD6").value = config.player.dice[6];
     $("pD12").value = config.player.dice[12];
     $("pD20").value = config.player.dice[20];
-    $("mName").value = config.monster.name;
-    $("mHp").value = config.monster.hp;
-    $("mAtk").value = config.monster.attack;
     el.configModal.classList.add("open");
   }
   function closeModal() { el.configModal.classList.remove("open"); }
@@ -726,34 +916,32 @@
     const d6 = parseInt($("pD6").value, 10);
     const d12 = parseInt($("pD12").value, 10);
     const d20 = parseInt($("pD20").value, 10);
-    const mName = $("mName").value.trim() || "怪物";
-    const mHp = parseInt($("mHp").value, 10);
-    const mAtk = parseInt($("mAtk").value, 10);
 
     if (!(pHp > 0)) { alert("玩家生命值需大于 0"); return; }
-    if (!(crit >= 0 && crit <= 100)) { alert("暴击率需在 0~100 之间"); return; }
-    if (!(mHp > 0)) { alert("怪物生命值需大于 0"); return; }
-    if (!(mAtk >= 0)) { alert("怪物攻击力不能为负"); return; }
+    if (!(crit >= 0 && crit <= 100)) { alert("暴击率需在 0~100 之间（游戏中成长上限 60%）"); return; }
     const totalDice = [d4, d6, d12, d20].reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0);
     if (totalDice <= 0) { alert("至少需要一颗骰子"); return; }
 
-    config.player = { name: pName, hp: pHp, dice: { 4: d4, 6: d6, 12: d12, 20: d20 } };
-    config.monster = { name: mName, hp: mHp, attack: mAtk };
-    config.critRate = crit / 100;
-
+    config.player = { name: pName, hp: pHp, critRate: Math.min(CRIT_CAP, crit / 100), dice: { 4: d4, 6: d6, 12: d12, 20: d20 } };
     closeModal();
-    resetBattle();
+    restartGame();
   }
 
   // ------- 事件 -------
-  el.rollBtn.addEventListener("click", roll);
+  el.rollBtn.addEventListener("click", function () {
+    if (state && state.player.hp <= 0) { restartGame(); return; }
+    roll();
+  });
   el.configToggle.addEventListener("click", openModal);
+  el.restartBtn.addEventListener("click", function () {
+    if (confirm("确定重新开始？当前进度会清空。")) restartGame();
+  });
   el.cancelBtn.addEventListener("click", closeModal);
   el.applyBtn.addEventListener("click", applyConfig);
   el.configModal.addEventListener("click", (e) => { if (e.target === el.configModal) closeModal(); });
 
   // ------- 启动 -------
-  resetBattle();
+  restartGame();
 })();
 </script>
 </body>
